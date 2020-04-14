@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 # regexp based on http://blog.sjas.de/posts/colored-iptables-output.html
 
 tmp_file='/tmp/iptables.tmp'

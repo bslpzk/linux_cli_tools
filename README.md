@@ -2,10 +2,18 @@
 
 Tiny Linux CLI helpers in daily work.
 
-1. `ipt` - colored and easy to read output of `iptables` rules from all tables
+### **ipt** - Colorizing your iptables output
 
-<center>CLI output example</center>
-<p align="center">
-  <img width="640" height="480" src="./img/ipt.jpg">
-</p>
+`ipt` - colored and easy to read output of `iptables` rules from all tables.
 
+Example output of `ipt`:
+![CLI output example:](img/ipt.jpg)
+
+### **sss** - Colorizing your `ss` output
+
+ * `ss` is the [iproute2](https://en.wikipedia.org/wiki/Iproute2) suite replacement of the deprecated `netstat` Linux networking command.
+
+`sss` - colored and easy to read output of `ss` tool that shows all listening ports on linux machine.
+
+Example output of `sss`:
+![CLI output example:](img/sss.jpg)

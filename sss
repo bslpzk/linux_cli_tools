@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+tmp_file='/tmp/ss.tmp'
+
+err() {
+    tput bold
+    tput setaf 1
+    echo "ERROR: $*"
+    tput sgr0
+}
+
+is_installed () {
+    command -v ss >/dev/null 2>&1 || { err "iproute 'ss' is required but it's not installed. Aborting."; exit 1; }
+    command -v sed >/dev/null 2>&1 || { err "'sed' is required but it's not installed. Aborting."; exit 1; }
+}
+
+whereis_ss () {
+    SS=$(whereis ss | tr "[:space:]" "\n" | grep 'bin')
+    count_lines=$(wc -l <<< "${SS}")
+    if [ ${count_lines} -gt 1 ]; then
+        err "'ss' binary file path error. Aborting."
+    fi
+}
+
+print_to_file () {
+    local rst="\033[37;1;4;5;31m"
+    local st="\033[37;1;37m"
+    local fn="\033[0m"
+    {
+        (( $EUID != 0 )) && echo -e "${rst}Warning: Only ROOT takes full information${fn}"
+        echo -e "${st}Current listening sockets list taken with 'ss' tool: ${fn}"
+        echo -e "${st}   Enabled options: -t -u -l -n -p ${fn}"
+        echo -e "${st}List of TCP and UDP sockets with numeric addresses instead of hostnames ${fn}"
+        ${SS} -tulnp | column -x
+    } > "${1}"
+}
+
+sed_inplace () {
+    sed  --regexp-extended --in-place \
+      "s/^Netid.*/\x1b[1;33m&\x1b[0m/;\
+       s/^tcp/\x1b[1;36m&\x1b[0m/;
+       /(LISTEN)/s//\x1b[1;4;36m\1\x1b[0m/; \
+       s/^udp/\x1b[1;32m&\x1b[0m/;
+       /(UNCONN)/s//\x1b[1;4;32m\1\x1b[0m/; \
+       /(:)([[:digit:]]+(:[[:digit:]]+)?)/s//\1\x1b[1;32m\2\x1b[0m/; \
+       /([%])([[:alnum:]]*)/s//\x1b[1;31m\1\2\x1b[0m/; \
+       /(users:)/s//\x1b[1;33m\1\x1b[0m/; \
+       /([(]+)(\"[^()]*\")(.*$)/s//\x1b[1;30m\1\x1b[0;34m\2\x1b[1;30m\3\x1b[0m/; \
+       /([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(\/([[:digit:]]){1,3}){0,1}/s//\x1b[34;1m&\x1b[0m/g" "${1}"
+}
+
+main () {
+    is_installed
+    whereis_ss
+    print_to_file "${tmp_file}"
+    sed_inplace "${tmp_file}"
+    cat "${tmp_file}"
+}
+
+main
+
+
+
