@@ -1,0 +1,66 @@
+#!/bin/env bash
+# regexp based on http://blog.sjas.de/posts/colored-iptables-output.html
+
+tmp_file='/tmp/iptables.tmp'
+
+err() {
+    tput bold
+    tput setaf 1
+    echo "ERROR: $*"
+    tput sgr0
+}
+
+is_installed () {
+    command -v iptables >/dev/null 2>&1 || { err "'iptables' is required but it's not installed. Aborting."; exit 1; }
+    command -v sed >/dev/null 2>&1 || { err "'sed' is required but it's not installed. Aborting."; exit 1; }
+}
+
+whereis_iptables () {
+    IPT=$(whereis iptables | tr "[:space:]" "\n" | grep 'sbin')
+    count_lines=$(wc -l <<< "${IPT}")
+    if [ ${count_lines} -gt 1 ]; then
+        err "'iptables' binary file path error. Aborting."
+    fi
+}
+
+print__all_tables_to_file () {
+    local st="\n\033[37;1;42m"
+    local fn="\033[0m\n"
+    {
+        echo -e "${st} Filter table ${fn}"
+        ${IPT} -t filter -vnxL --line-numbers
+        echo -e "${st} Nat table ${fn}"
+        ${IPT} -t nat -vnxL --line-numbers
+        echo -e "${st} Mangle table ${fn}"
+        ${IPT} -t mangle -vnxL --line-numbers
+        echo -e "${st} Raw table ${fn}"
+        ${IPT} -t raw -vnxL --line-numbers
+        echo -e "${st} Security table ${fn}"
+        ${IPT} -t security -vnxL --line-numbers
+        echo -e "${st} All rules was printed ${fn}"
+    } > "${1}"
+}
+
+sed_inplace () {
+    sed  --regexp-extended --in-place \
+       "s/^Chain.*$/\x1b[1;4m&\x1b[0m/;\
+        s/^num.*/\x1b[1;33m&\x1b[0m/;\
+        /([^y] )((REJECT|DROP))/s//\1\x1b[1;31m\3\x1b[0m/; \
+        /([^y] )((all|icmp|udp|tcp))/s//\1\x1b[4;32m\3\x1b[0m/; \
+        /([^y] )((MASQUERADE|MARK))/s//\1\x1b[1;35m\3\x1b[0m/; \
+        /([^y] )(ACCEPT)/s//\1\x1b[1;32m\2\x1b[0m/; \
+        /([^y] )(LOG)/s//\1\x1b[1;36m\2\x1b[0m/; \
+        /([ds]pt[s]?:)([[:digit:]]+(:[[:digit:]]+)?)/s//\1\x1b[33;1m\2\x1b[0m/; \
+        /([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(\/([[:digit:]]){1,3}){0,1}/s//\x1b[34;1m&\x1b[0m/g; \
+        /([^n] )(LOGDROP)/s//\1\x1b[33;1m\2\x1b[0m/" "${1}"
+}
+
+main () {
+    is_installed
+    whereis_iptables
+    print__all_tables_to_file "${tmp_file}"
+    sed_inplace "${tmp_file}"
+    cat "${tmp_file}"
+}
+
+main
